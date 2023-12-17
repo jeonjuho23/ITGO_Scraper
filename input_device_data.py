@@ -29,7 +29,7 @@ def insert_new_device(device_data:Device):
         with conn.cursor() as cursor:
             cursor.execute('SET @max_device_id = (SELECT coalesce(MAX(device_id), 0) FROM device);')
             # Define the SQL query for insertion
-            query = ('INSERT INTO device (device_id, device_name, detail_id, launch_price, category, release_date, manufacturer) '
+            query = ('INSERT INTO device (device_id, device_name, detail_id, launch_price, category_id, release_date, manufacturer) '
                      'VALUES (@max_device_id + 1, %s, %s, %s, %s, %s, %s)')
 
             # Execute the query with the provided data

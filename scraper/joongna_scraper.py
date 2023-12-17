@@ -64,7 +64,7 @@ class Joongna:
     #  중고나라 검색 url
     #  ?category=카테고리번호&page=페이지번호
     def __init__(self, cursor):
-        # self.category_nums = [1150, 1151, 1152, 1153, 1154, 1155, 1156, 1157, 1193, 1194, 1195, 1196]
+        # self.category_nums = [1150, 1151, 1152, 1153, 1154, 1155, 1156, 1193, 1194, 1195, 1196]
         self.category_nums = [1150]
         self.name = 'joongna'
 
@@ -73,12 +73,12 @@ class Joongna:
         self.JOONGNA_PRODUCT_URL = self.JOONGNA_URL + "/product"
         self.SORT_RECENT = 'RECENT_SORT'
 
-        self.member_id = 90
+        self.member_id = 1
 
 
         # self.category_names = {
         #     '스마트폰': {'삼성': 1150, '애플': 1151, 'LG': 1152, '기타': 1153},
-        #     '태블릿': {'삼성': 1154, '애플': 1155, 'LG': 1156, '기타': 1157}
+        #     '태블릿': {'삼성': 1154, '애플': 1155, '기타': 1156}
         #     # ,'노트북': {'삼성': 1193, '애플': 1194, 'LG': 1195, '기타': 1196}
         # }
 
@@ -189,8 +189,8 @@ class Joongna:
 
         device_name = extract_device_name(title)
 
-        post_like_count = 1
-        post_view_count = 1
+        post_like_count = 0
+        post_view_count = 0
         city = ''
         zipcode = ''
 
