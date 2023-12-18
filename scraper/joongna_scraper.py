@@ -6,56 +6,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 from data import SecondhandPost
 
-
-## ChatGPT에 쿼리를 보내는 함수
-def _ask_gpt(query):
-    load_dotenv()
-    client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-    model = 'gpt-4-1106-preview'
-    # GPT에 질문하기
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            # {"role":"system", "content":""},
-            {"role": "user", "content": query}
-        ],
-        temperature=0.7
-    )
-
-    # 생성된 응답 출력
-    answer = completion.choices[0].message.content
-
-    return answer
-
-
-## GPT를 활용해 제목에서 기기명을 추출하는 함수
-### 현재 테스트를 위해 기기명은 '기타'만 사용
-def extract_device_name(text):
-    print('extract_device_name\n')
-
-    ## GPT에 질문
-    ## "다음 백틱 한 개로 구분된 글에서 백틱 세 개로 구분된 단어들 중에서 관련도가 가장 높은 하나를 표기하여 주세요. "
-    ## "해당하는 단어가 없으면 '기타'를 표기해주세요. 다른 답변을 포함하지 말아주세요.\n"
-    # "```"
-    # +str(device_list) +
-    # "```"
-    # gpt_query = ("당신의 역할은 주어진 백틱 세개로 구분된 문장 속에서 IT 기기의 이름을 찾아내는 것입니다.\n숫자로 주어지는 요구사항에 맞춰서 대답해주세요.\n"
-    #              "1. 기기명에는 용량과 통신사의 이름은 포함되지 않습니다.\n"
-    #              "2. 발견한 IT 기기명은 영어로 번역합니다.\n"
-    #              "3. 각 단어의 가장 앞 글자만 대문자로 표기합니다.\n"
-    #              "4. 다른 대답은 필요 없습니다. 기기명만을 큰 따옴표 안에 넣어 대답해주세요.\n\n"
-    #              "```\n"
-    #              +text+
-    #              "\n```\n")
-    #
-    # device_name = "".join(self._ask_gpt(gpt_query).split()).replace('"', '')
-    # print(device_name)
-
-    # if device_name not in self.device_list:
-    #     device_name = '기타'
-    device_name = '기타'
-
-    return device_name
+load_dotenv()
 
 
 ## 중고나라 스크래핑 클래스
@@ -85,9 +36,60 @@ class Joongna:
         ## DB에 저장된 IT 기기명 리스트
         sql_query = 'select device_name from device'
         cursor.execute(sql_query)
-        self.device_list = cursor.fetchall()
+        _device_list = cursor.fetchall()
+        self.device_list = []
+        self.real_device_list = []
+        for device in _device_list:
+            self.real_device_list.append("".join(device[0]))
+            self.device_list.append("".join(device[0].split()).upper())
 
+    ## ChatGPT에 쿼리를 보내는 함수
+    def _ask_gpt(self, query):
 
+        client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        model = 'gpt-4-1106-preview'
+        # GPT에 질문하기
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                # {"role":"system", "content":""},
+                {"role": "user", "content": query}
+            ],
+            temperature=0.7
+        )
+
+        # 생성된 응답 출력
+        answer = completion.choices[0].message.content
+
+        return answer
+
+    ## GPT를 활용해 제목에서 기기명을 추출하는 함수
+    ### 현재 테스트를 위해 기기명은 '기타'만 사용
+    def extract_device_name(self, text):
+        print('extract_device_name\n')
+
+        ## GPT에 질문
+        ## "다음 백틱 한 개로 구분된 글에서 백틱 세 개로 구분된 단어들 중에서 관련도가 가장 높은 하나를 표기하여 주세요. "
+        ## "해당하는 단어가 없으면 '기타'를 표기해주세요. 다른 답변을 포함하지 말아주세요.\n"
+        # "```"
+        # +str(device_list) +
+        # "```"
+        gpt_query = ("당신의 역할은 주어진 백틱 세개로 구분된 문장 속에서 IT 기기의 이름을 찾아내는 것입니다.\n숫자로 주어지는 요구사항에 맞춰서 대답해주세요.\n"
+                     "1. 기기명에는 용량과 통신사의 이름은 포함되지 않습니다.\n"
+                     "2. 발견한 IT 기기명은 영어로 번역합니다.\n"
+                     "3. 각 단어의 가장 앞 글자만 대문자로 표기합니다.\n"
+                     "4. 다른 대답은 필요 없습니다. 기기명만을 큰 따옴표 안에 넣어 대답해주세요.\n\n"
+                     "```\n"
+                     +text+
+                     "\n```\n")
+
+        device_name = "".join(self._ask_gpt(gpt_query).split()).replace('"', '').strip().upper()
+        # print(device_name)
+        if device_name not in self.device_list:
+            device_name = '기타'
+        # print(device_name)
+
+        return device_name
 
     ## 게시된 시간을 알기 위해 변환하는 함수
     def parse_upload_time(self, time_text):
@@ -185,13 +187,24 @@ class Joongna:
         except Exception as e:
             print(f'no image {e}')
 
-        street = location
 
-        device_name = extract_device_name(title)
+        device_name = self.extract_device_name(title)
+        for device_ in self.real_device_list:
+            if device_name == "".join(device_.split()).upper():
+                device_name = device_
 
+        print(device_name)
         post_like_count = 0
         post_view_count = 0
+        url = os.environ.get('LOCATION_API')+'?keyword='+location
+        res = requests.get(url)
         city = ''
+        try:
+            city = res.json()[0]['location']['city']
+        except Exception as e:
+            print(f'city를 입력하는 과정에서의 오류 - {e}')
+
+        street = location
         zipcode = ''
 
 

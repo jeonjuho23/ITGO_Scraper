@@ -42,7 +42,6 @@ class PostScraper:
         sql = 'select device_id from device where device_name = %s'
         self.cursor.execute(sql, device_name)
         device_id = int(self.cursor.fetchone()[0])
-        print(device_id)
         return device_id
 
     ## DB에서 게시글 데이터 가져오기
@@ -53,7 +52,7 @@ class PostScraper:
         lst = [self.base_platform.name, category_num]
         sql = ("select post_url from secondhand_scraped_post as s join post on s.post_id = post.post_id "
                "where post.member_id = (select member_id from member where name = %s) "
-               "and (select category_id_by_site from category_by_site "
+               "and (select category_by_site from category_by_site "
                "where category_id = (select category_id from device where device_id = s.device_id)) = %s "
                "order by post_time desc limit 80;")
         try:
