@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from openai import OpenAI
 from dotenv import load_dotenv
+from deepl import Translator
 import os
 import requests
 from bs4 import BeautifulSoup as bs
@@ -37,11 +38,30 @@ class Joongna:
         sql_query = 'select device_name from device'
         cursor.execute(sql_query)
         _device_list = cursor.fetchall()
-        self.device_list = []
-        self.real_device_list = []
+
+        device_list_ko = []
+        ## 단어 리스트를 한 문장으로 변환
+        text = ''
         for device in _device_list:
-            self.real_device_list.append("".join(device[0]))
-            self.device_list.append("".join(device[0].split()).upper())
+            device_list_ko.append(device[0])
+            text += device[0] + ', '
+        text = text[:-2]
+
+        ## 기기명을 한글 -> 영어로 번역
+        deepl_auth_key = os.environ.get('DEEPL_API_KEY')
+        trans = Translator(deepl_auth_key)
+        trans_res = trans.translate_text(text, target_lang='EN-US').text
+
+        ## 영어 대문자로 띄워쓰기 없이
+        ## 게시글 제목에서 추출한 기기명과 비교하기 위함
+        self.device_list_en = "".join(trans_res.split()).upper().split(',')
+
+        ## 추출한 기기명을 다시 DB에 저장된 기기명으로 바꿔주기 위한 딕셔너리
+        self.device_list_ko_DB = {}
+        for device_en, device_ko in zip(self.device_list_en, device_list_ko):
+            self.device_list_ko_DB[device_en] = device_ko
+
+        print(self.device_list_ko_DB)
 
     ## ChatGPT에 쿼리를 보내는 함수
     def _ask_gpt(self, query):
@@ -85,8 +105,8 @@ class Joongna:
 
         device_name = "".join(self._ask_gpt(gpt_query).split()).replace('"', '').strip().upper()
         # print(device_name)
-        if device_name not in self.device_list:
-            device_name = '기타'
+        if device_name not in self.device_list_en:
+            device_name = 'OTHER'
         # print(device_name)
 
         return device_name
@@ -188,12 +208,11 @@ class Joongna:
             print(f'no image {e}')
 
 
-        device_name = self.extract_device_name(title)
-        for device_ in self.real_device_list:
-            if device_name == "".join(device_.split()).upper():
-                device_name = device_
+        device_name_en = self.extract_device_name(title)
+        device_name = self.device_list_ko_DB[device_name_en]
 
-        print(device_name)
+        print('device name is '+device_name)
+
         post_like_count = 0
         post_view_count = 0
         url = os.environ.get('LOCATION_API')+'?keyword='+location
